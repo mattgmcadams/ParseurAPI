@@ -20,18 +20,31 @@ def not_setup():
 
 
 class ParseurAPI:
-
+	
 	key = os.environ["parseur_api_key"]
 	url = 'https://api.parseur.com/'
 	headers = {'Authorization': 'Token ' + key}
 
+	def __init__(self):
+		self.account = self.list_mailboxes()
+
+	def POST(self, url_ext, params=None):
+		url = self.url + url_ext
+		return requests.post(url=url, params=params, headers = self.headers)
+	
+	def GET(self, url_ext, params=None):
+		url = self.url + url_ext
+		return requests.get(url=url, params=params, headers = self.headers)
+	
+	def DELETE(self, url_ext, params=None):
+		url = self.url + url_ext
+		return requests.delete(url=url, params=params, headers = self.headers)
+	
 	#list mailboxes
 	def list_mailboxes(self, sorting_key=[], search_query=None):
 		"""
 		Mailboxes objects are called parsers in the API.   
-
 		To list all your mailboxes, make a GET request on /parser. The response is paginated
-
 		The search query parameter will search in the following properties: 
 		* mailbox name
 		* mailbox email prefix
@@ -45,78 +58,86 @@ class ParseurAPI:
 			'QUOTAEXC_count',  # number of documents in quota exceeded status
 			'EXPORTKO_count'   # number of documents in export failed status
 		]  
+		
+		# TODO: setup sorting keys? 
 
 		params = {'search_query': search_query}
 
-		url = self.url + 'parser'
+		url = 'parser'
 		if search_query:
-			response = requests.get(url=url, params=params, headers=self.headers)
+			response = self.GET(url, params=params)
 		else:
-			response = requests.get(url=url,
-															headers={'Authorization': 'Token ' + self.key})
-		return response.json()
+			response = self.GET(url)
 
-	def create_mailbox(self,
-										 name,
-										 email_prefix=None,
-										 process_attachments=True,
-										 master_parser_slug=None):
+		return Account(response.json())
+
+	def create_mailbox(self, name, email_prefix=None, process_attachments=True, master_parser_slug=None):
 		"""
 		Create a mailbox 
-		To create a mailbox, make a POST request on /parser not_setup()ing the following keys: 
-		 * name 
-		 * email_prefix (optional, if not present, will be derived from name key)
-		 * process_attachments: 
-				 true / false (optional, defaults to true)
-		 * master_parser_slug:
-				 optional, set it if you want your mailbox to use one of our set of ready-
-					 made templates. Possible values are: 
-							 search-alerts, 
-							 food-delivery, 
-							 real-estate,
-							 job-application,
-							 property-bookings, 
-							 job-search.
+		To create a mailbox, make a POST request on /parser passing the following keys: 
+			* name 
+			* email_prefix (optional, if not present, will be derived from name key)
+		 	* process_attachments: 
+				true / false (optional, defaults to true)
+		 	* master_parser_slug:
+				optional, set it if you want your mailbox to use one of our set of ready-
+				made templates. Possible values are: 
+					search-alerts, 
+					food-delivery, 
+					real-estate,
+					job-application,
+					property-bookings, 
+					job-search.
 		"""
-		url = self.url + 'parser'
+		url = f'parser'
 		params = {'name': name, 'process_attachments': process_attachments}
 		if email_prefix:
 			params['email_prefix'] = email_prefix
 		if master_parser_slug:
 			params['master_parser_slug'] = master_parser_slug
 
-		response = requests.post(url=url, params=params, headers={'Authorization': 'Token ' + self.key})
-		return Account(response)
+		response = self.POST(url, params=params)
+		self.account = self.list_mailboxes()
+		return response.json()
 
 	def retrieve_mailbox(self, mailbox_id):
 		"""
 		Retrieve a mailbox 
 		You can retrieve a mailbox with a GET request on /parser/:mailbox_id
 		"""
-		url = self.url + 'parser/:' + mailbox_id
-		response = requests.get(url=url, headers={'Authorization': 'Token ' + self.key})
-		return response
+		url = f'parser/:{mailbox_id}'
+		response = self.GET(url)
+		return response.json()
 
 	def update_mailbox(self, mailbox_id):
 		"""
 		Update a mailbox 
 		You can update a mailbox with a PUT or POST request on /parser/:mailbox_id
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}'
+		response = self.POST(url)
+		self.account = self.list_mailboxes()
+		return response.json()
 
 	def copy_mailbox(self, mailbox_id):
 		"""
 		Copy a mailbox
 		You can copy (duplicate) an existing mailbox with a POST on /parser/:mailbox_id/copy
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}/copy'
+		response = self.POST(url)
+		self.account = self.list_mailboxes()
+		return response.json()
 
 	def delete_mailbox(self, mailbox_id):
 		"""
 		Delete a mailbox 
 		You can delete a mailbox with a DELETE request on /parser/:mailbox_id
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}'
+		response = self.DELETE(url)
+		self.account = self.list_mailboxes()
+		return response.json()
 
 	def get_mailbox_schema(self, mailbox_id):
 		"""
@@ -125,7 +146,9 @@ class ParseurAPI:
 		
 		Useful if you're planning to create a connector for Parseur. 
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}/schema'
+		response = self.GET(url)
+		return response.json()
 
 	"""
 	Manage Documents in a mailbox
@@ -138,7 +161,7 @@ class ParseurAPI:
 		"""
 		not_setup()
 
-	def list_documents(self, mailbox_id, document_set, sorting_key=None, search_query=None):
+	def list_documents(self, mailbox_id, sorting_key=None, search_query=None):
 		"""
 		List documents
 		You can list your documents in a given mailbox with a GET request 
@@ -157,7 +180,9 @@ class ParseurAPI:
 			* from to, cc and bcc email addresses
 			* document metadata header
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}/document_set'
+		response = self.GET(url)
+		return response.json()
 
 	def retrieve_document(self, document_id):                   
 		"""
@@ -165,7 +190,9 @@ class ParseurAPI:
 		You can retrieve a document and parsed results with a GET request 
 		on /document/:document_id
 		"""
-		not_setup()
+		url = f'document/:{document_id}'
+		response = self.GET(url)
+		return response.json()
 
 	def reprocess_document(self, document_id):
 		"""
@@ -173,7 +200,9 @@ class ParseurAPI:
 		You can reprocess (parse) a document with a POST 
 		on /document/:document_id/process
 		"""
-		not_setup()
+		url = f'document/:{document_id}'
+		response = self.POST(url)
+		return response.json()
 
 	def skip_document(self, document_id):
 		"""
@@ -181,15 +210,19 @@ class ParseurAPI:
 		You can set the Skipped status on a document with a POST 
 		on /document/:document_id/skip
 		"""
-		not_setup()
-
+		url = f'document/:{document_id}/skip'
+		response = self.POST(url)
+		return response.json()
+		
 	def copy_document(self, document_id, target_mailbox_id):
 		"""
 		Copy a document
 		You can copy a document to another mailbox with a POST 
 		on /document/:document_id/copy/:target_mailbox_id
 		"""
-		not_setup()
+		url = f'document/:{document_id}/copy/:{target_mailbox_id}'
+		response = self.POST(url)
+		return response.json()
 
 	def retrieve_doc_logs(self, document_id):
 		"""
@@ -197,14 +230,18 @@ class ParseurAPI:
 		You can access the activity logs of a document with a GET 
 		on /document/:document_id/log_set. Logs are paginated.
 		"""
-		not_setup()
+		url = f'document/:{document_id}/log_set'
+		response = self.GET(url)
+		return response.json()
 
 	def delete_document(self, document_id):
 		"""
 		Delete a document
 		You can delete a document with a DELETE request on /document/:document_id
 		"""
-		not_setup()
+		url = f'document/:{document_id}'
+		response = self.DELETE(url)
+		return response.json()
 
 	# Manage Templates in a mailbox
 	def list_templates(self, mailbox_id):
@@ -224,21 +261,30 @@ class ParseurAPI:
 		The search query parameter will search in the following properties:
 			* template name
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}/template_set'
+		response = self.GET(url)
+		return response.json()
+
 
 	def retrieve_template(self, template_id):
 		"""
 		Retrieve a template
 		You can retrieve a template with a GET request on /template/:template_id
 		"""
-		not_setup()
+		url = f'template/:{template_id}'
+		response = self.GET(url)
+		return response.json()
+
+
 
 	def copy_template(self, template_id, target_mailbox_id):
 		"""
 		Copy a template
 		You can copy a template with a POST on /template/:template_id/copy/:target_mailbox_id
 		"""
-		not_setup()
+		url = f'template/:{template_id}/copy/:{target_mailbox_id}'
+		response = self.POST(url)
+		return response.json()
 
 
 	def delete_template(self, template_id):
@@ -246,7 +292,9 @@ class ParseurAPI:
 		Delete a template
 		You can delete a template with a DELETE request on /template/:template_id
 		"""
-		not_setup()
+		url = f'template/:{template_id}'
+		response = self.DELETE(url)
+		return response.json()
 
 		# Manage Webhooks in a mailbox
 	def list_webhooks(self, mailbox_id):
@@ -259,7 +307,9 @@ class ParseurAPI:
 
 		Paused webhooks are under the available_webhook_set key.
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}'
+		response = self.GET(url)
+		return response.json()
 
 
 	def create_webhook(self, event, target, category, mailbox_id, parser_field, name=None, headers=None):
@@ -281,14 +331,15 @@ class ParseurAPI:
 		not_setup()
 
 
-	def enable_webhook(self, webhook_id):
+	def enable_webhook(self, mailbox_id, webhook_id):
 		"""
 		Enable a webhook
 		You can enable an existing webhook for a given mailbox with a POST request 
 		on /parser/:mailbox_id/webhook_set/:webhook_id
 		"""
-		not_setup()
-
+		url = f'parser/:{mailbox_id}/webhook_set/:{webhook_id}'
+		response = self.POST(url)
+		return response.json()
 
 	def pause_webhook(self, mailbox_id, webhook_id):
 		"""
@@ -296,7 +347,9 @@ class ParseurAPI:
 		You can pause an existing webhook for a given mailbox with a DELETE request 
 		on /parser/:mailbox_id/webhook_set/:webhook_id
 		"""
-		not_setup()
+		url = f'parser/:{mailbox_id}/webhook_set/:{webhook_id}'
+		response = self.DELETE(url)
+		return response.json()
 
 
 	def manage_parsed_data(self):
